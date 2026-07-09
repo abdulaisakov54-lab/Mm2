@@ -1,0 +1,262 @@
+-- RYZEN MM2 ПРОСТОЙ РАБОЧИЙ v1
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+local cam = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- ===== НАСТРОЙКИ =====
+local settings = {
+    esp = false,
+    aim = false,
+    speed = false,
+    gunEsp = false,
+    speedValue = 50
+}
+
+-- ===== ОПРЕДЕЛЕНИЕ РОЛИ =====
+function getRole(plr)
+    if not plr or not plr.Character then return "Innocent" end
+    local c = plr.Character
+    
+    -- Проверяем инструменты
+    for _, tool in pairs(c:GetChildren()) do
+        if tool:IsA("Tool") then
+            local n = tool.Name:lower()
+            if n:find("knife") or n:find("dagger") then return "Murderer" end
+            if n:find("gun") or n:find("pistol") then return "Sheriff" end
+        end
+    end
+    
+    -- Проверяем теги
+    if c:FindFirstChild("Murderer") then return "Murderer" end
+    if c:FindFirstChild("Sheriff") then return "Sheriff" end
+    
+    -- Проверяем голову
+    if c:FindFirstChild("Head") then
+        for _, obj in pairs(c.Head:GetChildren()) do
+            if obj:IsA("BillboardGui") and obj.Name == "Role" then
+                return obj.Text
+            end
+        end
+    end
+    
+    return "Innocent"
+end
+
+-- ===== СОЗДАЁМ КНОПКИ НА ЭКРАНЕ =====
+local gui = Instance.new("ScreenGui")
+gui.Parent = player.PlayerGui
+gui.ResetOnSpawn = false
+
+local function makeBtn(text, y, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 150, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.Text = text
+    btn.TextSize = 14
+    btn.BackgroundColor3 = color or Color3.fromRGB(40, 40, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    btn.Parent = gui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    return btn
+end
+
+-- Кнопки
+local espBtn = makeBtn("ESP: ВЫКЛ", 10, Color3.fromRGB(40, 40, 60))
+local aimBtn = makeBtn("AIM: ВЫКЛ", 60, Color3.fromRGB(40, 40, 60))
+local gunBtn = makeBtn("GUN ESP: ВЫКЛ", 110, Color3.fromRGB(40, 40, 60))
+local speedBtn = makeBtn("SPEED: ВЫКЛ", 160, Color3.fromRGB(40, 40, 60))
+
+-- Кнопка скорости +
+local speedUp = makeBtn("+", 210, Color3.fromRGB(0, 150, 0))
+speedUp.Size = UDim2.new(0, 70, 0, 35)
+
+local speedDown = makeBtn("-", 255, Color3.fromRGB(150, 0, 0))
+speedDown.Size = UDim2.new(0, 70, 0, 35)
+
+-- Отображение скорости
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 150, 0, 30)
+speedLabel.Position = UDim2.new(0, 10, 0, 215)
+speedLabel.Text = "Speed: 50"
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Parent = gui
+
+-- ===== ЛОГИКА КНОПОК =====
+-- ESP
+espBtn.MouseButton1Click:Connect(function()
+    settings.esp = not settings.esp
+    espBtn.Text = settings.esp and "ESP: ВКЛ" or "ESP: ВЫКЛ"
+    espBtn.BackgroundColor3 = settings.esp and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+    
+    if settings.esp then
+        -- Включаем ESP
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+                local hl = Instance.new("Highlight")
+                hl.Adornee = plr.Character
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.FillTransparency = 0.3
+                
+                local role = getRole(plr)
+                if role == "Murderer" then
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                elseif role == "Sheriff" then
+                    hl.FillColor = Color3.fromRGB(0, 100, 255)
+                else
+                    hl.FillColor = Color3.fromRGB(0, 255, 0)
+                end
+                hl.Parent = plr.Character
+            end
+        end
+    else
+        -- Выключаем ESP
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then
+                for _, obj in pairs(plr.Character:GetChildren()) do
+                    if obj:IsA("Highlight") then obj:Destroy() end
+                end
+            end
+        end
+    end
+end)
+
+-- AIMBOT
+aimBtn.MouseButton1Click:Connect(function()
+    settings.aim = not settings.aim
+    aimBtn.Text = settings.aim and "AIM: ВКЛ" or "AIM: ВЫКЛ"
+    aimBtn.BackgroundColor3 = settings.aim and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+end)
+
+-- GUN ESP
+gunBtn.MouseButton1Click:Connect(function()
+    settings.gunEsp = not settings.gunEsp
+    gunBtn.Text = settings.gunEsp and "GUN ESP: ВКЛ" or "GUN ESP: ВЫКЛ"
+    gunBtn.BackgroundColor3 = settings.gunEsp and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+end)
+
+-- SPEED
+speedBtn.MouseButton1Click:Connect(function()
+    settings.speed = not settings.speed
+    speedBtn.Text = settings.speed and "SPEED: ВКЛ" or "SPEED: ВЫКЛ"
+    speedBtn.BackgroundColor3 = settings.speed and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+end)
+
+-- Speed +
+speedUp.MouseButton1Click:Connect(function()
+    settings.speedValue = math.min(settings.speedValue + 10, 200)
+    speedLabel.Text = "Speed: " .. settings.speedValue
+end)
+
+-- Speed -
+speedDown.MouseButton1Click:Connect(function()
+    settings.speedValue = math.max(settings.speedValue - 10, 10)
+    speedLabel.Text = "Speed: " .. settings.speedValue
+end)
+
+-- ===== ОСНОВНЫЕ ЦИКЛЫ =====
+
+-- ESP обновление
+RunService.Stepped:Connect(function()
+    if settings.esp then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+                local hasHL = false
+                for _, obj in pairs(plr.Character:GetChildren()) do
+                    if obj:IsA("Highlight") then hasHL = true end
+                end
+                if not hasHL then
+                    local hl = Instance.new("Highlight")
+                    hl.Adornee = plr.Character
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    hl.FillTransparency = 0.3
+                    
+                    local role = getRole(plr)
+                    if role == "Murderer" then
+                        hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    elseif role == "Sheriff" then
+                        hl.FillColor = Color3.fromRGB(0, 100, 255)
+                    else
+                        hl.FillColor = Color3.fromRGB(0, 255, 0)
+                    end
+                    hl.Parent = plr.Character
+                end
+            end
+        end
+    end
+end)
+
+-- AIMBOT
+RunService.RenderStepped:Connect(function()
+    if not settings.aim then return end
+    
+    local target = nil
+    local minDist = 1000
+    local myRole = getRole(player)
+    
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("Head") then
+            local head = plr.Character.Head
+            local dist = (head.Position - hrp.Position).Magnitude
+            local role = getRole(plr)
+            
+            if myRole == "Murderer" then
+                if (role == "Sheriff" or role == "Innocent") and dist < minDist then
+                    minDist = dist
+                    target = head
+                end
+            elseif myRole == "Sheriff" then
+                if role == "Murderer" and dist < minDist then
+                    minDist = dist
+                    target = head
+                end
+            end
+        end
+    end
+    
+    if target then
+        cam.CFrame = CFrame.new(cam.CFrame.Position, target.Position)
+    end
+end)
+
+-- GUN ESP
+RunService.Stepped:Connect(function()
+    if not settings.gunEsp then return end
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") and (obj.Name:lower():find("gun") or obj.Name:lower():find("pistol")) then
+            if obj:FindFirstChild("Handle") and not obj:FindFirstChild("GunHighlight") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "GunHighlight"
+                hl.Adornee = obj
+                hl.FillColor = Color3.fromRGB(255, 200, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.FillTransparency = 0.2
+                hl.Parent = obj
+            end
+        end
+    end
+end)
+
+-- SPEED
+RunService.RenderStepped:Connect(function()
+    if settings.speed and hrp then
+        local move = humanoid.MoveDirection
+        if move.Magnitude > 0 then
+            hrp.Velocity = move * settings.speedValue
+        end
+    end
+end)
+
+print("✦ RYZEN MM2 ЗАГРУЖЕН ✦")
+print("Кнопки слева вверху")
