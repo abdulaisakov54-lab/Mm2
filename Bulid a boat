@@ -1,0 +1,81 @@
+-- Ryzen ShipBuilder + AutoFarm + CopyTool v1.0
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local workspace = game.Workspace
+
+-- Конфиг
+local config = {
+    farmRadius = 50,        -- радиус сбора ресурсов
+    shipTemplate = {        -- шаблон "корпус + палуба"
+        {Part = "Block", Size = Vector3.new(4,1,8), Color = Color3.fromRGB(139,69,19)},
+        {Part = "Block", Size = Vector3.new(4,1,8), Color = Color3.fromRGB(160,82,45), Offset = Vector3.new(0,1,0)},
+        {Part = "Wedge", Size = Vector3.new(4,1,2), Color = Color3.fromRGB(100,50,30), Offset = Vector3.new(0,1,-4)}
+    },
+    copyDistance = 20
+}
+
+-- Утилиты
+local function getResources()
+    local res = {}
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Tool") and v.Name:find("Resource") then
+            table.insert(res, v)
+        end
+    end
+    return res
+end
+
+-- Автофарм
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, res in pairs(getResources()) do
+        if (res.Position - player.Character.HumanoidRootPart.Position).Magnitude < config.farmRadius then
+            fireclickdetector(res:FindFirstChild("ClickDetector") or res.Parent:FindFirstChild("ClickDetector"))
+        end
+    end
+end)
+
+-- Автостройка по шаблону
+local function buildShip(pos)
+    local model = Instance.new("Model")
+    model.Name = "RyzenShip"
+    for _, data in ipairs(config.shipTemplate) do
+        local part = Instance.new(data.Part)
+        part.Size = data.Size
+        part.BrickColor = BrickColor.new(data.Color)
+        part.Anchored = true
+        part.CFrame = CFrame.new(pos + (data.Offset or Vector3.new(0,0,0)))
+        part.Parent = model
+    end
+    model.Parent = workspace
+end
+
+-- Копирование построек (клик по объекту)
+mouse.Button1Down:Connect(function()
+    local target = mouse.Target
+    if target and target:IsA("BasePart") and target.Parent:IsA("Model") then
+        local copy = target.Parent:Clone()
+        copy.Parent = workspace
+        copy:SetPrimaryPartCFrame(target.Parent.PrimaryPart.CFrame + Vector3.new(10,0,0))
+    end
+end)
+
+-- Интерфейс
+local screenGui = Instance.new("ScreenGui")
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,200,0,100)
+frame.Position = UDim2.new(0,10,0,10)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Parent = screenGui
+
+local buildBtn = Instance.new("TextButton")
+buildBtn.Size = UDim2.new(0,180,0,30)
+buildBtn.Position = UDim2.new(0,10,0,10)
+buildBtn.Text = "Построить корабль"
+buildBtn.Parent = frame
+buildBtn.MouseButton1Click:Connect(function()
+    buildShip(player.Character.HumanoidRootPart.Position + Vector3.new(0,0,15))
+end)
+
+screenGui.Parent = player.PlayerGui
+
+print("Ryzen AI: Чит активирован. Фарм, стройка, копирование работают.")
